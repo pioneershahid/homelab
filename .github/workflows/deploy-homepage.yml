@@ -1,0 +1,46 @@
+name: Deploy Homepage
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-homepage
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Homepage to homelab
+    runs-on: [self-hosted, linux, x64, homelab-smoke]
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Verify Ansible is available
+        run: |
+          ansible --version
+          ansible-playbook --version
+
+      - name: Verify SSH connectivity to Docker LXC
+        run: |
+          ansible \
+            -i ansible/inventory/homelab.yml \
+            docker_hosts \
+            -m ping
+
+      - name: Validate deployment playbook
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/homelab.yml \
+            --syntax-check \
+            ansible/playbooks/deploy-homepage.yml
+
+      - name: Deploy Homepage only
+        run: |
+          ansible-playbook \
+            -i ansible/inventory/homelab.yml \
+            ansible/playbooks/deploy-homepage.yml
