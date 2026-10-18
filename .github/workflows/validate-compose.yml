@@ -1,0 +1,57 @@
+name: Validate Docker Compose
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate Compose projects
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Compose
+        uses: docker/setup-compose-action@v2
+
+      - name: Validate Compose configurations
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          validate() {
+            local dir="$1"
+            local file="$2"
+            shift 2
+
+            echo "::group::Validate ${dir}/${file}"
+
+            if [[ -f "${dir}/.env.example" ]]; then
+              env "$@" docker compose \
+                --project-directory "$dir" \
+                --env-file "${dir}/.env.example" \
+                -f "${dir}/${file}" config --quiet
+            else
+              env "$@" docker compose \
+                --project-directory "$dir" \
+                -f "${dir}/${file}" config --quiet
+            fi
+
+            echo "Validation passed: ${dir}/${file}"
+            echo "::endgroup::"
+          }
+
+          validate frigate docker-compose.yaml
+          validate media docker-compose.yaml ARRPTH=/tmp/arr-validation
+          validate network/authelia docker-compose.yaml
+          validate network/homepage docker-compose.yaml
+          validate network/traefik docker-compose.yaml
+          validate photos docker-compose.yml
+          validate servarr docker-compose.yaml POSTGRES_PASSWORD=ci-validation-only
