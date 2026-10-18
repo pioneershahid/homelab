@@ -26,25 +26,31 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Create temporary placeholders for local runtime env files during CI.
-          # Do not commit these files or put real secrets in them.
+          # Create temporary placeholders for missing local runtime env files.
+          # Never commit real .env files or put secrets in CI placeholders.
           declare -a temporary_env_files=()
-
-          for dir in media network/homepage; do
-            if [[ ! -f "${dir}/.env" ]]; then
-               touch "${dir}/.env"
-               temporary_env_files+=("${dir}/.env")
-            fi
-          done
 
           cleanup() {
             for file in "${temporary_env_files[@]}"; do
               rm -f "$file"
             done
           }
-
           trap cleanup EXIT
 
+          for dir in \
+            frigate \
+            media \
+            network/authelia \
+            network/homepage \
+            network/traefik \
+            photos \
+            servarr
+          do
+            if [[ ! -f "${dir}/.env" ]]; then
+              touch "${dir}/.env"
+              temporary_env_files+=("${dir}/.env")
+            fi
+          done
 
           validate() {
             local dir="$1"
