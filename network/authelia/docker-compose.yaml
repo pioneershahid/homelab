@@ -1,0 +1,39 @@
+services:
+  authelia:
+    image: authelia/authelia
+    container_name: authelia
+    volumes:
+      - ./config:/config
+    networks:
+      - proxy
+
+    # Optional hardening added on 11 Jan 2026
+    security_opt:
+      - no-new-privileges:true
+
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.authelia.rule=Host(`auth.shahidmustafa.ie`)'
+      - 'traefik.http.routers.authelia.entrypoints=https'
+      - 'traefik.http.routers.authelia.tls=true'
+
+      # Ensure Traefik forwards to the correct internal port
+      - "traefik.http.services.authelia.loadbalancer.server.port=9091"
+
+      # ForwardAuth middleware (use the modern endpoint)
+      - "traefik.http.middlewares.authelia.forwardauth.address=http://authelia:9091/api/authz/forward-auth?rd=https://auth.shahidmustafa.ie"
+      - 'traefik.http.middlewares.authelia.forwardauth.trustForwardHeader=true'
+
+      # Headers to pass to upstream apps (gitea, etc.)
+      - 'traefik.http.middlewares.authelia.forwardauth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Name,Remote-Email'
+    expose:
+      - 9091
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Dublin
+    healthcheck:
+      disable: true
+
+networks:
+  proxy:
+    external: true

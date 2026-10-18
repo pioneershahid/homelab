@@ -1,0 +1,174 @@
+# For configuration options and examples, please see:
+# https://gethomepage.dev/latest/configs/services
+
+---
+# For configuration options and examples, please see:
+# https://gethomepage.dev/latest/configs/services
+# icons found here https://github.com/walkxcode/dashboard-icons
+
+- Infrastructure:
+    - Proxmox:
+        icon: proxmox.svg
+        href: {{HOMEPAGE_VAR_PROXMOX_URL}}
+        description: pve1
+        widget:
+          type: proxmox
+          url: {{HOMEPAGE_VAR_PROXMOX_URL}}
+          username: {{HOMEPAGE_VAR_PROXMOX_USER}}
+          password: {{HOMEPAGE_VAR_PROXMOX_API_KEY}}
+          #node: VFIEOX3
+
+    - Portainer:
+        icon: portainer.svg
+        href: "{{HOMEPAGE_VAR_PORTAINER_URL}}"
+        description: docker
+        widget:
+            type: portainer
+            url: "{{HOMEPAGE_VAR_PORTAINER_URL}}"
+            env: 2
+            key: "{{HOMEPAGE_VAR_PORTAINER_API_KEY}}"
+
+
+    - Portainer2:
+        icon: portainer.svg
+        href: "{{HOMEPAGE_VAR_PORTAINER2_URL}}"
+        description: docker
+        widget:
+            type: portainer
+            url: "{{HOMEPAGE_VAR_PORTAINER2_URL}}"
+            env: 2
+            key: "{{HOMEPAGE_VAR_PORTAINER2_KEY}}"
+
+    - Cockpit:
+        icon: cockpit.svg
+        href: https://192.168.1.29:9090
+        description: LXC host console
+
+- Network:
+#    - Pi-hole:
+#        href: {{HOMEPAGE_VAR_PIHOLE_HREF}}
+#        description: DNS ad blocker
+#        icon: pi-hole.png
+#        widget:
+#          type: pihole
+#          url: {{HOMEPAGE_VAR_PIHOLE_URL}}
+#          key: {{HOMEPAGE_VAR_PIHOLE_KEY}}
+#          fields: ["queries", "blocked", "blocked_percent", "gravity"]
+
+    - Pi-hole:
+        href: {{HOMEPAGE_VAR_PIHOLE_HREF}}
+        description: DNS ad blocker
+        icon: pi-hole.png
+        widget:
+            type: pihole
+            url: {{HOMEPAGE_VAR_PIHOLE_URL}}
+            version: 6
+            key: {{HOMEPAGE_VAR_PIHOLE_KEY}}
+            fields:
+                - queries
+                - blocked
+                - blocked_percent
+                - gravity
+
+    - Traefik:
+        icon: traefik.svg
+        href: {{HOMEPAGE_VAR_TRAEFIK_URL}}
+        description: Reverse proxy
+        widget:
+          type: traefik
+          url: {{HOMEPAGE_VAR_TRAEFIK_URL}}
+          username: {{HOMEPAGE_VAR_TRAEFIK_USER}}     # optional
+          password: {{HOMEPAGE_VAR_TRAEFIK_PASSWORD}} # optional
+
+    - Netboot.xyz:
+        icon: https://netboot.xyz/img/nbxyz-laptop.gif
+        href: {{HOMEPAGE_VAR_NETBOOT_URL}}
+        description: Network boot utility
+
+- Media:
+    - Jellyfin:
+        icon: jellyfin.png
+        href: "{{HOMEPAGE_VAR_JELLYFIN_URL}}"
+        description: Media Server
+        widget:
+          type: jellyfin
+          url: "{{HOMEPAGE_VAR_JELLYFIN_URL}}"
+          key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+          enableBlocks: true
+          # Jellyfin supports blocks like movies/series/episodes/songs
+          # (enableBlocks turns them on) :contentReference[oaicite:5]{index=5}
+
+    - Jellyseerr:
+        icon: jellyseerr.png
+        href: "{{HOMEPAGE_VAR_JELLYSEERR_URL}}"
+        widget:
+          type: jellyseerr
+          url: "{{HOMEPAGE_VAR_JELLYSEERR_URL}}"
+          key: "{{HOMEPAGE_VAR_JELLYSEERR_KEY}}"
+          # optional fields supported by the widget:
+          # fields: ["pending","approved","available","issues"]
+
+- Media Automation:
+    - Sonarr:
+        icon: sonarr.png
+        href: {{HOMEPAGE_VAR_SONARR_URL}}
+        widget:
+          type: sonarr
+          url: {{HOMEPAGE_VAR_SONARR_URL}}
+          key: {{HOMEPAGE_VAR_SONARR_KEY}}
+
+    - Radarr:
+        icon: radarr.png
+        href: {{HOMEPAGE_VAR_RADARR_URL}}
+        widget:
+          type: radarr
+          url: {{HOMEPAGE_VAR_RADARR_URL}}
+          key: {{HOMEPAGE_VAR_RADARR_KEY}}
+
+    - Prowlarr:
+        icon: prowlarr.png
+        href: {{HOMEPAGE_VAR_PROWLARR_URL}}
+        widget:
+          type: prowlarr
+          url: {{HOMEPAGE_VAR_PROWLARR_URL}}
+          key: {{HOMEPAGE_VAR_PROWLARR_KEY}}
+
+    - Readarr:
+        icon: readarr.png
+        href: {{HOMEPAGE_VAR_READARR_URL}}
+        widget:
+          type: readarr
+          url: {{HOMEPAGE_VAR_READARR_URL}}
+          key: {{HOMEPAGE_VAR_READARR_KEY}}
+
+    - Bazarr:
+        icon: bazarr.png
+        href: {{HOMEPAGE_VAR_BAZARR_URL}}
+        widget:
+          type: bazarr
+          url: {{HOMEPAGE_VAR_BAZARR_URL}}
+          key: {{HOMEPAGE_VAR_BAZARR_KEY}}
+
+- Home Automation:
+    - Home Assistant:
+        icon: home-assistant.svg
+        href: "{{HOMEPAGE_VAR_HOME_ASSISTANT_URL}}"
+        description: home
+        widget:
+            type: homeassistant
+            url: "{{HOMEPAGE_VAR_HOME_ASSISTANT_URL}}"
+            key: "{{HOMEPAGE_VAR_HOME_ASSISTANT_API_KEY}}"
+    - Scryped:
+        icon: https://www.scrypted.app/images/web_hi_res_512.png
+        href: "{{HOMEPAGE_VAR_SCRYPTED_URL}}"
+        description: mgmt console
+
+- Dev:
+    - GitLab:
+        icon: gitea.svg
+        href: https://gitea.shahidmustafa.ie
+        description: source code
+    - GitHub:
+        icon: github.svg
+        href: https://github.com/pioneershahid
+        description: source code

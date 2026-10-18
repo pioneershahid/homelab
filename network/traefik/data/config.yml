@@ -1,0 +1,240 @@
+http:
+ #region routers
+  routers:
+    proxmox:
+      entryPoints:
+        - "https"
+      rule: "Host(`proxmox.shahidmustafa.ie`)"
+      middlewares:
+        - authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: proxmox
+
+#    frigate:
+#      entryPoints:
+#        - "https"
+#      rule: "Host(`frigate.shahidmustafa.ie`)"
+#      middlewares:
+#        - authelia
+#        - default-headers
+#        - https-redirectscheme
+#      tls: {}
+#      service: frigate
+
+    gitea:
+      entryPoints:
+        - "https"
+      rule: "Host(`gitea.shahidmustafa.ie`)"
+      middlewares:
+        - authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: gitea
+
+#    cockpit:
+#      entryPoints:
+#        - "https"
+#      rule: "Host(`cockpit.shahidmustafa.ie`)"
+#      middlewares:
+#        - authelia
+#        - default-headers
+#        - https-redirectscheme
+#      tls: {}
+#      service: cockpit
+
+    homeassistant:
+      # For Homeassistant config, check: https://www.home-assistant.io/integrations/http/#reverse-proxies
+      # This relies on Homeassistant using http. No certs are needed in the Homeassistant config.
+      entryPoints:
+        - "https"
+      rule: "Host(`hassio.shahidmustafa.ie`)"
+      middlewares:
+        #- authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: homeassistant
+
+    pihole:
+      entryPoints:
+        - "https"
+      rule: "Host(`pihole.shahidmustafa.ie`)"
+      middlewares:
+        - authelia
+        - default-headers
+        - addprefix-pihole
+        - https-redirectscheme
+      tls: {}
+      service: pihole
+
+    homepage:
+      entryPoints:
+        - "https"
+      rule: "Host(`homepage.shahidmustafa.ie`)"
+      middlewares:
+        - authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: homepage
+
+#    jellyfin:
+#      entryPoints:
+#        - "https"
+#      rule: "Host(`jellyfin.shahidmustafa.ie`)"
+#      middlewares:
+#        - authelia
+#        - default-headers
+#        - https-redirectscheme
+#      tls: {}
+#      service: jellyfin
+
+    webapp:
+      entryPoints:
+        - "https"
+      #rule: "Host(`www.shahidmustafa.ie`)"
+      rule: "Host(`shahidmustafa.ie`) || Host(`www.shahidmustafa.ie`)"
+      middlewares:
+        #- authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: webapp
+
+    immich:
+      entryPoints:
+        - "https"
+      rule: "Host(`immich.shahidmustafa.ie`)"
+      middlewares:
+        - authelia
+        - default-headers
+        - https-redirectscheme
+      tls: {}
+      service: immich
+
+#middleware
+#endregion
+#region services
+  services:
+    proxmox:
+      loadBalancer:
+        serversTransport: "pve"
+        servers:
+          - url: "https://192.168.1.35:8006"
+        passHostHeader: true
+
+    pihole:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.19"
+        passHostHeader: true
+
+    gitea:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.26:3000"
+        passHostHeader: true
+
+    frigate:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.30:5000"
+        passHostHeader: true
+
+#    cockpit:
+#      loadBalancer:
+#        servers:
+#          - url: "http://192.168.1.29:9090"
+#        passHostHeader: true
+
+    homepage:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.27:3000"
+        passHostHeader: true
+
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.2:8123"
+        passHostHeader: true
+
+    jellyfin:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.31:8096"
+        passHostHeader: true
+
+
+    webapp:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.27:8090"
+        passHostHeader: true
+
+    immich:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.1.28:2283"
+        passHostHeader: true
+
+  serversTransports:
+    pve:
+      insecureSkipVerify: true
+
+ ## MIDDLEWARES ##
+#endregion
+  middlewares:
+
+    addprefix-pihole:
+      addPrefix:
+        prefix: "/admin"
+
+    addprefix-wordpress:
+      addPrefix:
+        prefix: "/wp-login.php"
+
+    https-redirectscheme:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    default-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        forceSTSHeader: true
+        stsIncludeSubdomains: true
+        stsPreload: true
+        stsSeconds: 15552000
+        customFrameOptionsValue: SAMEORIGIN
+        customRequestHeaders:
+          X-Forwarded-Proto: https
+
+    default-whitelist:
+      ipAllowList:
+        sourceRange:
+        - "10.0.0.0/8"
+        - "192.168.1.0/24"
+        - "172.16.0.0/12"
+
+    secured:
+      chain:
+        middlewares:
+        - default-whitelist
+        - default-headers
+
+    authelia:
+      forwardAuth:
+        address: "http://authelia:9091/api/authz/forward-auth?rd=https://auth.shahidmustafa.ie"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - "Remote-User"
+          - "Remote-Groups"
+          - "Remote-Name"
+          - "Remote-Email"
+  #endregion

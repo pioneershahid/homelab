@@ -3,3 +3,13 @@
 !.env.example
 *.bak
 *.log
+
+# Network LXC secrets and runtime state
+network/**/.env
+network/**/.env.*
+!network/**/.env.example
+network/traefik/data/acme.json
+network/traefik/cf_api_token.txt
+network/traefik/data/logs/
+network/homepage/config/logs/
+network/authelia/config/
