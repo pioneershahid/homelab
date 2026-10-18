@@ -38,10 +38,20 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Check Ansible syntax
-        run: ansible-playbook --syntax-check ansible/playbooks/ci-smoke.yml
+        run: |
+          ansible-playbook --syntax-check ansible/playbooks/ci-smoke.yml
+          ansible-playbook \
+            -i ansible/inventory/homelab.yml \
+            --syntax-check \
+            ansible/playbooks/deploy-homepage.yml
+
+      - name: Validate homelab inventory
+        run: ansible-inventory -i ansible/inventory/homelab.yml --list > /dev/null
 
       - name: Lint Ansible playbooks
-        run: ansible-lint ansible/playbooks/ci-smoke.yml
+        run: |
+          ansible-lint ansible/playbooks/ci-smoke.yml
+          ansible-lint ansible/playbooks/deploy-homepage.yml
 
       - name: Execute safe localhost smoke test
         run: ansible-playbook ansible/playbooks/ci-smoke.yml

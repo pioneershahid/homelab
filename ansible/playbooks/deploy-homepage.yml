@@ -1,0 +1,111 @@
+---
+- name: Deploy Homepage Compose service
+  hosts: docker_hosts
+  gather_facts: false
+  become: true
+
+  vars:
+    homepage_dir: /root/docker_volumes/homepage
+    homepage_compose: "{{ homepage_dir }}/docker-compose.yaml"
+    homepage_candidate: "{{ homepage_dir }}/.docker-compose.candidate.yaml"
+    repo_compose: "{{ playbook_dir }}/../../network/homepage/docker-compose.yaml"
+
+  tasks:
+    - name: Verify required live files exist
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ homepage_dir }}"
+        - "{{ homepage_compose }}"
+        - "{{ homepage_dir }}/.env"
+        - "{{ homepage_dir }}/config"
+      register: homepage_paths
+
+    - name: Require existing Homepage deployment and environment
+      ansible.builtin.assert:
+        that:
+          - homepage_paths.results[0].stat.isdir | default(false)
+          - homepage_paths.results[1].stat.isreg | default(false)
+          - homepage_paths.results[2].stat.isreg | default(false)
+          - homepage_paths.results[3].stat.isdir | default(false)
+        fail_msg: >-
+          Homepage deployment files are missing. Refusing to create or
+          overwrite the live environment.
+
+    - name: Validate current live Compose configuration
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-directory
+          - "{{ homepage_dir }}"
+          - -f
+          - "{{ homepage_compose }}"
+          - config
+          - -q
+      changed_when: false
+
+    - name: Stage repository Compose file for validation
+      ansible.builtin.copy:
+        src: "{{ repo_compose }}"
+        dest: "{{ homepage_candidate }}"
+        mode: "0644"
+
+    - name: Validate staged Compose configuration
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-directory
+          - "{{ homepage_dir }}"
+          - -f
+          - "{{ homepage_candidate }}"
+          - config
+          - -q
+      changed_when: false
+
+    - name: Deploy Compose file with backup if changed
+      ansible.builtin.copy:
+        src: "{{ repo_compose }}"
+        dest: "{{ homepage_compose }}"
+        mode: "0644"
+        backup: true
+      register: homepage_compose_copy
+
+    - name: Apply Homepage service only
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-directory
+          - "{{ homepage_dir }}"
+          - -f
+          - "{{ homepage_compose }}"
+          - up
+          - -d
+          - --no-deps
+          - homepage
+      register: homepage_deploy
+      changed_when: >-
+        'Recreated' in homepage_deploy.stdout or
+        'Created' in homepage_deploy.stdout or
+        'Started' in homepage_deploy.stdout
+
+    - name: Wait for Homepage to become healthy or running
+      ansible.builtin.command:
+        argv:
+          - docker
+          - inspect
+          - homepage
+          - --format
+          - '{% raw %}{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}{% endraw %}'
+      register: homepage_health
+      changed_when: false
+      retries: 12
+      delay: 5
+      until: homepage_health.stdout in ['healthy', 'running']
+
+    - name: Remove staged Compose file
+      ansible.builtin.file:
+        path: "{{ homepage_candidate }}"
+        state: absent
