@@ -1,0 +1,108 @@
+
+name: Disposable LXC integration test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homelab-lxc-test-990
+  cancel-in-progress: false
+
+jobs:
+  integration-test:
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, homelab-smoke]
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Validate restricted SSH setup
+        shell: bash
+        run: |
+          set -euo pipefail
+          KEY="$HOME/.ssh/homelab_ci_lxc"
+          KNOWN="$HOME/.ssh/known_hosts"
+
+          test -s "$KEY"
+          test -s "$KNOWN"
+          chmod 700 "$HOME/.ssh"
+          chmod 600 "$KEY" "$KNOWN"
+          ssh-keygen -y -f "$KEY" >/dev/null
+
+          ssh_opts=(
+            -i "$KEY"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$KNOWN"
+            -o ConnectTimeout=5
+          )
+
+          ssh "${ssh_opts[@]}" homelab-ci@192.168.1.35 destroy
+
+      - name: Create disposable LXC
+        id: create
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(
+            -i "$HOME/.ssh/homelab_ci_lxc"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+            -o ConnectTimeout=5
+          )
+          ssh "${ssh_opts[@]}" homelab-ci@192.168.1.35 create
+
+      - name: Verify HTTP response
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(
+            -i "$HOME/.ssh/homelab_ci_lxc"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+
+          ip=$(ssh "${ssh_opts[@]}" homelab-ci@192.168.1.35 ip)
+          [[ "$ip" =~ ^192\.168\.1\.[0-9]+$ ]] || {
+            echo "Unexpected test container address: $ip"
+            exit 1
+          }
+
+          echo "Testing HTTP service at $ip"
+          for attempt in $(seq 1 30); do
+            body=$(curl --silent --fail --connect-timeout 2 \
+              --max-time 5 "http://${ip}/" 2>/dev/null || true)
+
+            if [[ "$body" == "homelab-ci-lxc-test-ok" ]]; then
+              echo "PASS: disposable LXC served the expected response."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "FAIL: expected HTTP response was not received."
+          exit 1
+
+      - name: Always clean up successful provisioning
+        if: ${{ always() && steps.create.outcome == 'success' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh_opts=(
+            -i "$HOME/.ssh/homelab_ci_lxc"
+            -o BatchMode=yes
+            -o IdentitiesOnly=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+          ssh "${ssh_opts[@]}" homelab-ci@192.168.1.35 destroy
