@@ -39,7 +39,7 @@ jobs:
 
       - name: Check Ansible syntax
         run: |
-          ansible-playbook --syntax-check ansible/playbooks/ci-smoke.yml
+          ansible-playbook -i localhost, --syntax-check ansible/playbooks/ci-smoke.yml
           ansible-playbook \
             -i ansible/inventory/homelab.yml \
             --syntax-check \
@@ -54,4 +54,4 @@ jobs:
           ansible-lint ansible/playbooks/deploy-homepage.yml
 
       - name: Execute safe localhost smoke test
-        run: ansible-playbook ansible/playbooks/ci-smoke.yml
+        run: ansible-playbook -i localhost, ansible/playbooks/ci-smoke.yml
