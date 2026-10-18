@@ -49,7 +49,7 @@ jobs:
           }
 
           validate frigate docker-compose.yaml
-          validate media docker-compose.yaml ARRPTH=/tmp/arr-validation
+          validate media docker-compose.yaml ARRPATH=/tmp/arr-validation/
           validate network/authelia docker-compose.yaml
           validate network/homepage docker-compose.yaml
           validate network/traefik docker-compose.yaml
