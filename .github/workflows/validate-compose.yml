@@ -26,12 +26,25 @@ jobs:
         run: |
           set -euo pipefail
 
-          # Create a temporary placeholder for the private runtime env file.
-          # Never add real secrets to CI just to validate Compose syntax.
-          if [[ ! -f media/.env ]]; then
-            touch media/.env
-            trap 'rm -f media/.env' EXIT
-          fi
+          # Create temporary placeholders for local runtime env files during CI.
+          # Do not commit these files or put real secrets in them.
+          declare -a temporary_env_files=()
+
+          for dir in media network/homepage; do
+            if [[ ! -f "${dir}/.env" ]]; then
+               touch "${dir}/.env"
+               temporary_env_files+=("${dir}/.env")
+            fi
+          done
+
+          cleanup() {
+            for file in "${temporary_env_files[@]}"; do
+              rm -f "$file"
+            done
+          }
+
+          trap cleanup EXIT
+
 
           validate() {
             local dir="$1"
