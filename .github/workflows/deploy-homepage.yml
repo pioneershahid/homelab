@@ -20,27 +20,39 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Ansible tools
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+
       - name: Verify Ansible is available
         run: |
-          /opt/homelab/.venv/bin/ansible --version
+          .venv/bin/ansible --version
           /opt/homelab/.venv/bin/ansible-playbook --version
 
       - name: Verify SSH connectivity to Docker LXC
         run: |
-          /opt/homelab/.venv/bin/ansible \
+          .venv/bin/ansible \
             -i ansible/inventory/homelab.yml \
             docker_hosts \
             -m ping
 
       - name: Validate deployment playbook
         run: |
-          /opt/homelab/.venv/bin/ansible-playbook \
+          .venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
             --syntax-check \
             ansible/playbooks/deploy-homepage.yml
 
       - name: Deploy Homepage only
         run: |
-          /opt/homelab/.venv/bin/ansible-playbook \
+          .venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
             ansible/playbooks/deploy-homepage.yml
