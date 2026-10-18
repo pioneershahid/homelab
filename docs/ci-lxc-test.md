@@ -79,3 +79,22 @@ Protect `main` so untrusted changes cannot execute on the self-hosted runner.
 This test validates container provisioning, package installation, LAN HTTP
 reachability, and cleanup. It does not yet validate Terraform/OpenTofu,
 Ansible, application-specific deployment, backups, or rollback of production.
+
+
+
+## Verification history
+
+### First successful integration run
+
+- Workflow: `Disposable LXC integration test`
+- Result: passed
+- Provisioning: Debian 13, CTID 990
+- Test service: Nginx
+- Test address: `192.168.1.95` (DHCP; not fixed)
+- HTTP assertion: exact response `homelab-ci-lxc-test-ok`
+- Cleanup: CT configuration and logical volume removed
+- Existing production LXCs: not modified
+- Notes: locale and systemd/nesting warnings were non-fatal
+
+Re-run this workflow manually from `main` to verify the lifecycle after
+changes to the wrapper, template, networking, or workflow.
