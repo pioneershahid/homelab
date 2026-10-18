@@ -22,25 +22,25 @@ jobs:
 
       - name: Verify Ansible is available
         run: |
-          ansible --version
-          ansible-playbook --version
+          /opt/homelab/.venv/bin/ansible --version
+          /opt/homelab/.venv/bin/ansible-playbook --version
 
       - name: Verify SSH connectivity to Docker LXC
         run: |
-          ansible \
+          /opt/homelab/.venv/bin/ansible \
             -i ansible/inventory/homelab.yml \
             docker_hosts \
             -m ping
 
       - name: Validate deployment playbook
         run: |
-          ansible-playbook \
+          /opt/homelab/.venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
             --syntax-check \
             ansible/playbooks/deploy-homepage.yml
 
       - name: Deploy Homepage only
         run: |
-          ansible-playbook \
+          /opt/homelab/.venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
             ansible/playbooks/deploy-homepage.yml
