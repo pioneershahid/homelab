@@ -1,0 +1,91 @@
+services:
+
+############################
+# WATCHTOWER - Automatic Updates
+############################
+  watchtower:
+    image: containrrr/watchtower:latest
+    networks:
+      - mediarr
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_SCHEDULE=0 0 4 * * *   # Runs daily at 4 AM
+    restart: unless-stopped
+
+############################
+# JELLYFIN
+############################
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    hostname: jellyfin
+    networks:
+      - mediarr
+    ports:
+      - "8096:8096"
+      - "8920:8920"
+      - "7359:7359/udp"
+    volumes:
+      - ./jellyfin/cache:/cache
+      - ./jellyfin/config:/config
+      - ${ARRPATH}libraries/movies:/data/Movies
+      - ${ARRPATH}libraries/tvshows:/data/TVShows
+      - ${ARRPATH}libraries/music:/data/Music
+      - ${ARRPATH}libraries/books:/data/Books
+    devices:
+      - /dev/dri/renderD128:/dev/dri/renderD128
+    env_file:
+      - .env
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+############################
+# DUPLICATI
+############################
+  duplicati:
+    image: lscr.io/linuxserver/duplicati:latest
+    networks:
+      - mediarr
+    ports:
+      - "8200:8200"
+    volumes:
+      - ./duplicati/config:/config
+      - ./duplicati/source:/source
+      - ./duplicati/restore:/restore
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    env_file:
+      - .env
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+############################
+# JELLYSEERR
+############################
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    networks:
+      - mediarr
+    ports:
+      - "5055:5055"
+    volumes:
+      - ./jellyseerr/config:/app/config
+    env_file:
+      - .env
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+
+############################
+# NETWORK
+############################
+networks:
+  mediarr:
+    driver: bridge

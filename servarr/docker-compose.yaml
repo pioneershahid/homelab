@@ -1,0 +1,299 @@
+services:
+
+############################
+# JACKETT
+############################
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    volumes:
+      - ./jackett/config:/config
+      - ${ARRPATH}libraries:/downloads
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - AUTO_UPDATE=true
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# GLUETUN
+############################
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    networks:
+      mediarr:
+        ipv4_address: 172.20.0.2
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    ports:
+      # qBittorrent
+      - "8080:8080"
+      - "8999:8999"
+      - "8999:8999/udp"
+
+      # Servarr UIs (only if you want them accessible on LAN)
+      - "7878:7878"  # Radarr
+      - "8989:8989"  # Sonarr
+      - "8686:8686"  # Lidarr
+      - "6767:6767"  # Bazarr
+      - "9696:9696"  # Prowlarr
+      - "8191:8191"  # FlareSolverr
+      - "9117:9117"  # Jackett
+
+    volumes:
+      - ./gluetun:/gluetun
+    environment:
+      # --- VPN ---
+      - VPN_TYPE=openvpn
+      - VPN_SERVICE_PROVIDER=private internet access
+      - OPENVPN_USER=${VPN_USERNAME}
+      - OPENVPN_PASSWORD=${VPN_PASSWORD}
+      - OPENVPN_PROTOCOL=udp
+
+      # --- SERVER STABILITY ---
+      - SERVER_REGIONS=Netherlands,Germany,Switzerland
+      - UPDATER_PERIOD=24h
+
+      # --- SECURITY ---
+      - FIREWALL=on
+      - FIREWALL_OUTBOUND_SUBNETS=192.168.1.0/24 #,10.0.0.0/8
+      - BLOCK_MALICIOUS=on
+
+      # --- DNS (secure but stable) ---
+      - DOT=on
+      - DNS_KEEP_NAMESERVER=off
+
+      # --- HEALTHCHECK (less aggressive) ---
+      - HEALTH_VPN_DURATION_INITIAL=2m
+      - HEALTH_VPN_DURATION_ADDITION=30s
+
+      # --- OPTIONAL: reduce fingerprinting ---
+      - TZ=${TZ}
+
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# QBITTORRENT
+############################
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    volumes:
+      - ./qbittorrent/config:/config
+      - ${ARRPATH}libraries:/downloads
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# PROWLARR
+############################
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    volumes:
+      - ./Prowlarr/config:/config
+      - ./Prowlarr/backup:/data/Backup
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# RADARR
+############################
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+      - prowlarr
+      - qbittorrent
+    volumes:
+      - ./Radarr/config:/config
+      - ./Radarr/backup:/data/Backup
+      - ${ARRPATH}libraries:/downloads
+      - ${ARRPATH}libraries/movies:/data/movies
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# SONARR
+############################
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+      - prowlarr
+      - qbittorrent
+    volumes:
+      - ./Sonarr/config:/config
+      - ./Sonarr/backup:/data/Backup
+      - ${ARRPATH}libraries:/downloads
+      - ${ARRPATH}libraries/tvshows:/data/tvshows
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# CALIBRE-WEB (replacing readarr)
+############################
+  calibre:
+    image: lscr.io/linuxserver/calibre-web:latest
+    container_name: calibre-web
+    networks:
+      mediarr:
+        ipv4_address: 172.20.0.20
+    depends_on:
+      - gluetun
+      - prowlarr
+      - qbittorrent
+    volumes:
+      - ./Calibre/config:/config
+      - ${ARRPATH}libraries:/downloads
+      - ${ARRPATH}libraries/books:/data/books
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+    ports:
+      - 8083:8083
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# LIDARR
+############################
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+      - prowlarr
+      - qbittorrent
+    volumes:
+      - ./Lidarr/config:/config
+      - ${ARRPATH}libraries:/downloads
+      - ${ARRPATH}libraries/music:/data/music
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# BAZARR
+############################
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+      - sonarr
+      - radarr
+    volumes:
+      - ./bazarr/config:/config
+      - ${ARRPATH}libraries/movies:/data/Movies
+      - ${ARRPATH}libraries/tvshows:/data/TVShows
+    restart: unless-stopped
+    env_file: [".env"]
+
+############################
+# FLARESOLVERR
+############################
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    network_mode: "service:gluetun"
+    depends_on:
+      - gluetun
+    environment:
+      - TZ=${TZ}
+    restart: unless-stopped
+
+############################
+# POSTGRES DB for Reading Glasses
+############################
+  postgresdb:
+    image: postgres:17
+    container_name: reading-glasses-db
+    environment:
+      PUID: 1026
+      PGID: 100
+      POSTGRES_USER: rreading-glasses
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set it in .env}
+      POSTGRES_DB: rreading-glasses
+    networks:
+      mediarr:
+        ipv4_address: 172.20.0.41
+    volumes:
+      - ./rreading-glasses/db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  removarr:
+    image: ghcr.io/garnajee/removarr:latest
+    container_name: removarr
+    networks:
+      mediarr:
+        ipv4_address: 172.20.0.50
+    depends_on:
+      - qbittorrent
+    environment:
+      PUID: ${PUID}
+      PGID: ${PGID}
+      CLIENT_TYPE: qbittorrent
+      QBIT_HOST: ${QBIT_HOST}
+      QBIT_PORT: ${QBIT_PORT:-8080}
+      QBIT_USERNAME: ${QBIT_USERNAME}
+      QBIT_PASSWORD: ${QBIT_PASSWORD}
+      QBITTORRENTAPI_DO_NOT_VERIFY_WEBUI_CERTIFICATE: 1
+    volumes:
+      - /mnt/media/libraries:/data/media
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    env_file: [".env"]
+
+networks:
+  duplicati:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
+  mediarr:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+          gateway: 172.20.0.1
