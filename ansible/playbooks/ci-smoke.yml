@@ -1,0 +1,13 @@
+---
+- name: Safe Ansible CI smoke test
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Confirm the play is restricted to localhost
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == 'localhost'
+        fail_msg: "This CI smoke test must run only against localhost."
+        success_msg: "Ansible CI smoke test is running against localhost."
