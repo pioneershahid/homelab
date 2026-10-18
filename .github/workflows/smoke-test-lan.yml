@@ -1,0 +1,20 @@
+name: Homelab LAN smoke tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: Probe homelab services
+    runs-on: [self-hosted, linux, x64, homelab-smoke]
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run LAN smoke tests
+        run: bash scripts/smoke-test-lan.sh
