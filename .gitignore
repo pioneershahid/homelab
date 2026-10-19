@@ -13,3 +13,11 @@ network/traefik/cf_api_token.txt
 network/traefik/data/logs/
 network/homepage/config/logs/
 network/authelia/config/
+
+# Local tooling caches and virtual environments
+.ansible/
+.cache/
+.venv/
+venv/
+__pycache__/
+*.py[cod]

@@ -101,6 +101,19 @@ The repository's `.gitignore` excludes environment files and selected runtime st
 
 **A Git commit or passing validation workflow does not mean a configuration has been deployed.**
 
+## Smoke tests
+
+Two complementary smoke tests are available:
+
+- **LAN smoke test — `scripts/smoke-test-lan.sh`:** probes service URLs from the machine running the script. GitHub Actions runs this manually on the self-hosted homelab runner using the **Homelab LAN smoke tests** workflow. Run it when checking service reachability from the runner's network.
+- **Proxmox-local smoke test — `scripts/smoke-test.sh`:** runs `curl` inside selected LXCs through Proxmox `pct exec`. Run it manually on the Proxmox host when diagnosing service reachability from inside those containers. It requires appropriate Proxmox privileges and the expected container IDs.
+
+Both scripts report individual HTTP probe results and return a nonzero exit status if any probe fails. They are intended as read-only reachability checks; an HTTP success does not guarantee full application functionality.
+
+The probes use fixed addresses and ports, so update them deliberately when the homelab network or service layout changes. The monitoring probes also assume the monitoring host remains at `192.168.1.99`.
+
+Neither smoke test deploys configurations, restarts services, or replaces application-specific health checks.
+
 ## Out of scope
 
 - **Gitea (CT 107):** installed and managed separately using the [Proxmox Community Scripts project](https://github.com/community-scripts/ProxmoxVE).
