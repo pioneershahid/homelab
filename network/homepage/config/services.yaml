@@ -78,7 +78,7 @@
           type: traefik
           url: {{HOMEPAGE_VAR_TRAEFIK_URL}}
           username: {{HOMEPAGE_VAR_TRAEFIK_USER}}     # optional
-          password: {{HOMEPAGE_VAR_TRAEFIK_PASSWORD}} # optional
+          password: {{HOMEPAGE_VAR_TRAEFIK_PASSWORD}}
 
     - Netboot.xyz:
         icon: https://netboot.xyz/img/nbxyz-laptop.gif
