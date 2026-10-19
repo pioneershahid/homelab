@@ -1,0 +1,88 @@
+---
+compose_projects_by_host:
+  photos:
+    - name: immich
+      service: photos
+      directory: /root/docker_volumes/immich-app
+      live_file: docker-compose.yml
+      repo_file: photos/docker-compose.yml
+      required_dirs:
+        - /root/docker_volumes/immich-app
+      required_files:
+        - /root/docker_volumes/immich-app/docker-compose.yml
+        - /root/docker_volumes/immich-app/.env
+
+  network:
+    - name: homepage
+      service: homepage
+      directory: /root/docker_volumes/homepage
+      live_file: docker-compose.yaml
+      repo_file: network/homepage/docker-compose.yaml
+      service_name: homepage
+      required_dirs:
+        - /root/docker_volumes/homepage
+        - /root/docker_volumes/homepage/config
+      required_files:
+        - /root/docker_volumes/homepage/docker-compose.yaml
+        - /root/docker_volumes/homepage/.env
+      health_type: docker_running
+
+    - name: authelia
+      service: authelia
+      directory: /root/docker_volumes/authelia
+      live_file: docker-compose.yaml
+      repo_file: network/authelia/docker-compose.yaml
+      required_dirs:
+        - /root/docker_volumes/authelia
+      required_files:
+        - /root/docker_volumes/authelia/docker-compose.yaml
+        - /root/docker_volumes/authelia/.env
+
+    - name: traefik
+      service: traefik
+      directory: /root/docker_volumes/traefik
+      live_file: docker-compose.yaml
+      repo_file: network/traefik/docker-compose.yaml
+      required_dirs:
+        - /root/docker_volumes/traefik
+      required_files:
+        - /root/docker_volumes/traefik/docker-compose.yaml
+        - /root/docker_volumes/traefik/.env
+
+  servarr:
+    - name: servarr
+      service: servarr
+      directory: /root/docker_volumes/servarr
+      live_file: docker-compose.yaml
+      repo_file: servarr/docker-compose.yaml
+      required_dirs:
+        - /root/docker_volumes/servarr
+      required_files:
+        - /root/docker_volumes/servarr/docker-compose.yaml
+        - /root/docker_volumes/servarr/.env
+
+  media:
+    - name: media
+      service: media
+      directory: /root/docker_volumes/mediarr
+      live_file: docker-compose.yaml
+      repo_file: media/docker-compose.yaml
+      required_dirs:
+        - /root/docker_volumes/mediarr
+      required_files:
+        - /root/docker_volumes/mediarr/docker-compose.yaml
+        - /root/docker_volumes/mediarr/.env
+
+  frigate:
+    - name: frigate
+      service: frigate
+      directory: /root/docker_volumes/frigate
+      live_file: docker-compose.yaml
+      repo_file: frigate/docker-compose.yaml
+      service_name: frigate
+      required_dirs:
+        - /root/docker_volumes/frigate
+      required_files:
+        - /root/docker_volumes/frigate/docker-compose.yaml
+        - /root/docker_volumes/frigate/.env
+      health_type: docker_healthy

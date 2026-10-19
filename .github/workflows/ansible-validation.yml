@@ -43,7 +43,10 @@ jobs:
           ansible-playbook \
             -i ansible/inventory/homelab.yml \
             --syntax-check \
-            ansible/playbooks/deploy-homepage.yml
+            ansible/playbooks/deploy.yml \
+            ansible/playbooks/deploy-homepage.yml \
+            ansible/playbooks/deploy-frigate.yml \
+            ansible/playbooks/deploy-compose-batch.yml
 
       - name: Validate homelab inventory
         run: ansible-inventory -i ansible/inventory/homelab.yml --list > /dev/null
@@ -51,7 +54,7 @@ jobs:
       - name: Lint Ansible playbooks
         run: |
           ansible-lint ansible/playbooks/ci-smoke.yml
-          ansible-lint ansible/playbooks/deploy-homepage.yml
+          ansible-lint ansible/playbooks/deploy.yml
 
       - name: Execute safe localhost smoke test
         run: ansible-playbook -i localhost, ansible/playbooks/ci-smoke.yml

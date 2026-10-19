@@ -1,0 +1,57 @@
+---
+- name: Modular homelab Compose deployment
+  hosts: compose_deploy_hosts
+  gather_facts: false
+  become: true
+  strategy: linear
+  any_errors_fatal: true
+
+  vars_files:
+    - vars/services.yml
+
+  vars:
+    target_service: "all"
+    approve_compose_drift: false
+    force_recreate: false
+
+  tasks:
+    - name: Determine applicable projects for this host
+      ansible.builtin.set_fact:
+        host_projects: >-
+          {{
+            compose_projects_by_host[inventory_hostname]
+            | selectattr('service', 'equalto', target_service)
+            | list
+            if target_service != 'all'
+            else compose_projects_by_host[inventory_hostname]
+          }}
+
+    # Phase 1: Preflight
+    - name: Preflight applicable projects on this host
+      ansible.builtin.include_tasks: tasks/preflight-project.yml
+      loop: "{{ host_projects }}"
+      loop_control:
+        loop_var: project
+        label: "{{ project.name }}"
+
+    # Phase 2: Backup live compose files
+    - name: Backup live compose files
+      ansible.builtin.copy:
+        src: "{{ project.directory }}/{{ project.live_file }}"
+        dest: >-
+          {{ project.directory }}/{{ project.live_file }}.pre-deploy-{{
+          lookup('pipe', 'date +%Y%m%d-%H%M%S') }}
+        remote_src: true
+        mode: preserve
+      loop: "{{ host_projects }}"
+      loop_control:
+        loop_var: project
+        label: "{{ project.name }}"
+
+    # Phase 3: Apply and Health Check
+    - name: Deploy applicable projects
+      ansible.builtin.include_tasks: tasks/deploy-project.yml
+      loop: "{{ host_projects }}"
+      loop_control:
+        loop_var: project
+        label: "{{ project.name }}"

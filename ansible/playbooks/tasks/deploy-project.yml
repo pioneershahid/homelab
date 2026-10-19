@@ -1,0 +1,89 @@
+---
+- name: Install repository Compose file with a backup
+  ansible.builtin.copy:
+    src: "{{ project.directory }}/.compose-candidate.yaml"
+    dest: "{{ project.directory }}/{{ project.live_file }}"
+    remote_src: true
+    mode: "0644"
+    backup: true
+  register: compose_install
+
+- name: Apply specific service if named
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/{{ project.live_file }}"
+      - up
+      - -d
+      - --no-deps
+      - "{{ '--force-recreate' if force_recreate | default(false) | bool else '--no-recreate' }}"
+      - "{{ project.service_name }}"
+  register: compose_up_specific
+  when: project.service_name is defined
+  changed_when: >-
+    compose_install.changed or
+    'Created' in compose_up_specific.stdout or
+    'Recreated' in compose_up_specific.stdout or
+    'Started' in compose_up_specific.stdout
+
+- name: Apply entire project if no specific service requested
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/{{ project.live_file }}"
+      - up
+      - -d
+  register: compose_up_all
+  when: project.service_name is not defined
+  changed_when: >-
+    compose_install.changed or
+    'Created' in compose_up_all.stdout or
+    'Recreated' in compose_up_all.stdout or
+    'Started' in compose_up_all.stdout
+
+- name: Wait for service health (if health_type is docker_healthy)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - "{{ project.service_name }}"
+      - --format
+      - '{% raw %}{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}{% endraw %}'
+  register: service_health
+  when: project.health_type | default('') == 'docker_healthy'
+  changed_when: false
+  retries: 18
+  delay: 5
+  until: service_health.stdout == 'healthy'
+
+- name: Wait for service status (if health_type is docker_running)
+  ansible.builtin.command:
+    argv:
+      - docker
+      - inspect
+      - "{{ project.service_name }}"
+      - --format
+      - '{% raw %}{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}{% endraw %}'
+  register: service_running
+  when: project.health_type | default('') == 'docker_running'
+  changed_when: false
+  retries: 12
+  delay: 5
+  until: service_running.stdout in ['healthy', 'running']
+
+- name: Show deployment result
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }}/{{ project.name }} applied successfully"
+
+- name: Remove staged candidate
+  ansible.builtin.file:
+    path: "{{ project.directory }}/.compose-candidate.yaml"
+    state: absent

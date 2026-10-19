@@ -54,27 +54,28 @@ Self-hosted workflows can access homelab infrastructure and must be treated as p
 
 | Workflow | Trigger | Scope |
 |---|---|---|
-| `Deploy Homepage` | Manual | Deploys the tracked Homepage Compose file to the Docker LXC |
+| `Deploy Homelab Services` | Manual | Deploys selected service (Homepage, Frigate, Photos, Servarr, Media, etc.) or all services via batch |
 | `Homelab LAN smoke tests` | Manual | Runs the LAN service probes in `scripts/smoke-test-lan.sh` |
 | `Disposable LXC integration test` | Manual, restricted to `main` | Provisions, tests, and cleans up the dedicated disposable test LXC |
 
 The disposable LXC integration test uses reserved CTID 990 and restricted SSH commands. See [`docs/ci-lxc-test.md`](docs/ci-lxc-test.md) before modifying its workflow or Proxmox-side setup.
 
-## Homepage deployment
+## Homelab service deployment
 
-The current Ansible deployment targets the Docker LXC at `192.168.1.27` through the `docker_hosts` inventory group.
+The unified Ansible deployment targets the LXC containers mapped in `ansible/inventory/homelab.yml` and configured in `ansible/playbooks/vars/services.yml`.
 
 To deploy:
 
 1. Review and commit the intended changes to `main`.
-2. Confirm the relevant GitHub validation workflows pass.
+2. Confirm the relevant GitHub validation workflows pass (`Validate Docker Compose` and `Ansible validation`).
 3. Open the repository's **Actions** tab.
-4. Select **Deploy Homepage** and run the workflow from `main`.
-5. Review the job output and verify Homepage health.
+4. Select **Deploy Homelab Services** and run the workflow from `main`.
+5. Choose the specific service to deploy (or `all` to run batch preflight and deployment) and set parameters (`approve_compose_drift` or `force_recreate`).
+6. Review the job output and verify service health status.
 
-The playbook stages and validates the repository Compose file, backs up the existing live Compose file, and runs `docker compose up -d --no-deps homepage`. It then checks the resulting service status.
+The deployment stages and validates the repository Compose file against the target container's live environment, performs checksum drift verification, creates timestamped backups of existing live Compose files, applies the service, and verifies container health.
 
-**Deployment scope is intentionally limited:** this playbook deploys the Homepage Compose file only. It does not synchronize Homepage configuration files such as `config/services.yaml`, modify the live `.env` file, or deploy other services. Those changes require a separately reviewed process.
+**Deployment scope is intentionally limited:** this playbook deploys the tracked Compose files only. It does not overwrite application databases, state directories, or uncommitted live `.env` files. Those changes require a separately reviewed process.
 
 A successful CI run validates configuration; a successful deployment run indicates that the deployment playbook completed its checks. Neither should be treated as proof that unrelated services or all application functionality have been tested.
 

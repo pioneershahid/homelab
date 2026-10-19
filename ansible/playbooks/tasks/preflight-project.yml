@@ -1,0 +1,82 @@
+---
+- name: Check required directories exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ project.required_dirs | default([project.directory]) }}"
+  register: dir_stats
+
+- name: Require expected directories
+  ansible.builtin.assert:
+    that:
+      - item.stat.isdir | default(false)
+    fail_msg: "Preflight failed: {{ inventory_hostname }}/{{ project.name }} missing directory {{ item.item }}"
+  loop: "{{ dir_stats.results }}"
+
+- name: Check required files exist
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ project.required_files | default([project.directory ~ '/' ~ project.live_file, project.directory ~ '/.env']) }}"
+  register: file_stats
+
+- name: Require expected files (.env and live Compose file)
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+    fail_msg: "Preflight failed: {{ inventory_hostname }}/{{ project.name }} missing file {{ item.item }}"
+  loop: "{{ file_stats.results }}"
+
+- name: Validate current live Compose configuration
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/{{ project.live_file }}"
+      - config
+      - -q
+  changed_when: false
+
+- name: Stage the repository candidate
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../{{ project.repo_file }}"
+    dest: "{{ project.directory }}/.compose-candidate.yaml"
+    mode: "0600"
+
+- name: Validate candidate against the target's existing environment
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/.compose-candidate.yaml"
+      - config
+      - -q
+  changed_when: false
+
+- name: Hash live and candidate Compose files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    checksum_algorithm: sha256
+  loop:
+    - "{{ project.directory }}/{{ project.live_file }}"
+    - "{{ project.directory }}/.compose-candidate.yaml"
+  register: project_hashes
+
+- name: Report whether repository configuration differs
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}/{{ project.name }}:
+      {{ 'MATCH' if project_hashes.results[0].stat.checksum == project_hashes.results[1].stat.checksum else 'DIFFERENT' }}
+
+- name: Require explicit approval for differing configurations
+  ansible.builtin.assert:
+    that:
+      - project_hashes.results[0].stat.checksum == project_hashes.results[1].stat.checksum or approve_compose_drift | default(false) | bool
+    fail_msg: >-
+      {{ inventory_hostname }}/{{ project.name }} differs from the repository.
+      Deployment aborted before the apply phase.
+      Review the diff or set approve_compose_drift to true.

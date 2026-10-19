@@ -1,11 +1,29 @@
-
-name: Deploy Compose Batch
+name: Deploy Homelab Services
 
 on:
   workflow_dispatch:
     inputs:
+      service:
+        description: "Select target service (or 'all' for full batch deployment)"
+        required: true
+        type: choice
+        default: "homepage"
+        options:
+          - homepage
+          - frigate
+          - photos
+          - servarr
+          - media
+          - authelia
+          - traefik
+          - all
       approve_compose_drift:
         description: "Allow repository Compose files that differ from live files"
+        required: true
+        type: boolean
+        default: false
+      force_recreate:
+        description: "Force recreate containers (e.g. Frigate, Homepage)"
         required: true
         type: boolean
         default: false
@@ -14,12 +32,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-compose-batch
+  group: deploy-homelab
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Preflight and deploy all Compose projects
+    name: Deploy ${{ inputs.service }}
     runs-on: [self-hosted, linux, x64, homelab-smoke]
     timeout-minutes: 45
     env:
@@ -39,33 +57,29 @@ jobs:
       - name: Validate inventory and playbook syntax
         run: |
           .venv/bin/ansible-inventory \
-            -i ansible/inventory/homelab.yml --list >/dev/null
+            -i ansible/inventory/homelab.yml --list > /dev/null
 
           .venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
             --syntax-check \
-            ansible/playbooks/deploy-compose-batch.yml
+            ansible/playbooks/deploy.yml
 
-      - name: Verify SSH and Docker Compose on every target
+      - name: Verify SSH connectivity to target hosts
         run: |
           .venv/bin/ansible compose_deploy_hosts \
             -i ansible/inventory/homelab.yml \
             -m ansible.builtin.ping
 
-          .venv/bin/ansible compose_deploy_hosts \
-            -i ansible/inventory/homelab.yml \
-            -m ansible.builtin.command \
-            -a "docker compose version" \
-            -o
-
-      - name: Preflight all targets, then deploy the batch
+      - name: Run deployment playbook
         env:
+          TARGET_SERVICE: ${{ inputs.service }}
           APPROVE_COMPOSE_DRIFT: ${{ inputs.approve_compose_drift }}
+          FORCE_RECREATE: ${{ inputs.force_recreate }}
         run: |
           .venv/bin/ansible-playbook \
             -i ansible/inventory/homelab.yml \
-            ansible/playbooks/deploy-compose-batch.yml \
-            --extra-vars "approve_compose_drift=${APPROVE_COMPOSE_DRIFT}"
+            ansible/playbooks/deploy.yml \
+            --extra-vars "target_service=${TARGET_SERVICE} approve_compose_drift=${APPROVE_COMPOSE_DRIFT} force_recreate=${FORCE_RECREATE}"
 
-      - name: Run targeted Compose batch smoke tests
-        run: bash scripts/smoke-test-compose-batch.sh
+      - name: Run targeted smoke tests
+        run: bash scripts/smoke-test-lan.sh "${{ inputs.service }}"
