@@ -30,7 +30,7 @@ services:
       - 9091
     restart: unless-stopped
     environment:
-      - TZ=Europe/Dublin
+      - TZ=${TZ:-Europe/Dublin}
     healthcheck:
       disable: true
 
