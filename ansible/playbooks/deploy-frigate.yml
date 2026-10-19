@@ -1,0 +1,114 @@
+---
+- name: Deploy Frigate Compose service
+  hosts: frigate_hosts
+  gather_facts: false
+  become: true
+
+  vars:
+    frigate_dir: /opt/homelab/frigate
+    frigate_compose: "{{ frigate_dir }}/docker-compose.yaml"
+    frigate_candidate: "{{ frigate_dir }}/.docker-compose.candidate.yaml"
+    repo_compose: "{{ playbook_dir }}/../../frigate/docker-compose.yaml"
+    frigate_recreate: false
+
+  tasks:
+    - name: Verify existing Frigate deployment files
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ frigate_dir }}"
+        - "{{ frigate_compose }}"
+        - "{{ frigate_dir }}/.env"
+      register: frigate_paths
+
+    - name: Require existing deployment and environment
+      ansible.builtin.assert:
+        that:
+          - frigate_paths.results[0].stat.isdir | default(false)
+          - frigate_paths.results[1].stat.isreg | default(false)
+          - frigate_paths.results[2].stat.isreg | default(false)
+        fail_msg: >-
+          Frigate's existing directory, Compose file, or .env is missing.
+          Refusing to create a new deployment.
+
+    - name: Validate current live Compose configuration
+      ansible.builtin.command:
+        argv:
+          - docker
+          - compose
+          - --project-directory
+          - "{{ frigate_dir }}"
+          - -f
+          - "{{ frigate_compose }}"
+          - config
+          - -q
+      changed_when: false
+
+    - name: Stage and validate candidate configuration
+      block:
+        - name: Copy repository Compose file to candidate path
+          ansible.builtin.copy:
+            src: "{{ repo_compose }}"
+            dest: "{{ frigate_candidate }}"
+            mode: "0644"
+
+        - name: Validate candidate Compose configuration
+          ansible.builtin.command:
+            argv:
+              - docker
+              - compose
+              - --project-directory
+              - "{{ frigate_dir }}"
+              - -f
+              - "{{ frigate_candidate }}"
+              - config
+              - -q
+          changed_when: false
+
+        - name: Install Compose file with a backup
+          ansible.builtin.copy:
+            src: "{{ repo_compose }}"
+            dest: "{{ frigate_compose }}"
+            mode: "0644"
+            backup: true
+          register: frigate_compose_copy
+
+        - name: Apply Frigate service without recreating by default
+          ansible.builtin.command:
+            argv:
+              - docker
+              - compose
+              - --project-directory
+              - "{{ frigate_dir }}"
+              - -f
+              - "{{ frigate_compose }}"
+              - up
+              - -d
+              - --no-deps
+              - "{{ '--force-recreate' if frigate_recreate | bool else '--no-recreate' }}"
+              - frigate
+          register: frigate_deploy
+          changed_when: >-
+            'Recreated' in frigate_deploy.stdout or
+            'Created' in frigate_deploy.stdout or
+            'Started' in frigate_deploy.stdout
+
+        - name: Wait for Frigate to become healthy
+          ansible.builtin.command:
+            argv:
+              - docker
+              - inspect
+              - frigate
+              - --format
+              - '{% raw %}{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}{% endraw %}'
+          register: frigate_health
+          changed_when: false
+          retries: 18
+          delay: 5
+          until: frigate_health.stdout == 'healthy'
+
+      always:
+        - name: Remove candidate Compose file
+          ansible.builtin.file:
+            path: "{{ frigate_candidate }}"
+            state: absent
