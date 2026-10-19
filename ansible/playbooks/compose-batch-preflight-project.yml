@@ -1,4 +1,3 @@
-
 ---
 - name: Check live directory, Compose file and environment
   ansible.builtin.stat:

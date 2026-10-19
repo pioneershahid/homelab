@@ -16,3 +16,29 @@ all:
           ansible_user: root
           ansible_python_interpreter: /usr/bin/python3
           ansible_ssh_private_key_file: /home/runner/.ssh/homepage_deploy
+
+    compose_deploy_hosts:
+      hosts:
+        photos:
+          ansible_host: 192.168.1.28
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: /home/runner/.ssh/homepage_deploy
+
+        network:
+          ansible_host: 192.168.1.27
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: /home/runner/.ssh/homepage_deploy
+
+        servarr:
+          ansible_host: 192.168.1.31
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: /home/runner/.ssh/homepage_deploy
+
+        media:
+          ansible_host: 192.168.1.25
+          ansible_user: root
+          ansible_python_interpreter: /usr/bin/python3
+          ansible_ssh_private_key_file: /home/runner/.ssh/homepage_deploy

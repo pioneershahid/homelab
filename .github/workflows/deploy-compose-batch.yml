@@ -67,5 +67,5 @@ jobs:
             ansible/playbooks/deploy-compose-batch.yml \
             --extra-vars "approve_compose_drift=${APPROVE_COMPOSE_DRIFT}"
 
-      - name: Run LAN smoke tests
-        run: bash scripts/smoke-test-lan.sh
+      - name: Run targeted Compose batch smoke tests
+        run: bash scripts/smoke-test-compose-batch.sh

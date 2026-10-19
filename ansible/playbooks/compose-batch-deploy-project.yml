@@ -1,4 +1,3 @@
-
 ---
 - name: Install repository Compose file with a backup
   ansible.builtin.copy:
@@ -35,4 +34,3 @@
   ansible.builtin.file:
     path: "{{ project.directory }}/.compose-batch-candidate.yaml"
     state: absent
-

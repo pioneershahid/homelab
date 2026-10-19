@@ -56,7 +56,7 @@ jobs:
             -i ansible/inventory/homelab.yml \
             docker_hosts \
             -m ping
-            
+
       - name: Validate deployment playbook
         run: |
           .venv/bin/ansible-playbook \
