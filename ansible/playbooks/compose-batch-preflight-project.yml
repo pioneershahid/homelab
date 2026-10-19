@@ -1,0 +1,82 @@
+
+---
+- name: Check live directory, Compose file and environment
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ project.directory }}"
+    - "{{ project.directory }}/{{ project.live_file }}"
+    - "{{ project.directory }}/.env"
+  register: project_paths
+
+- name: Require an existing deployment and .env
+  ansible.builtin.assert:
+    that:
+      - project_paths.results[0].stat.isdir | default(false)
+      - project_paths.results[1].stat.isreg | default(false)
+      - project_paths.results[2].stat.isreg | default(false)
+    fail_msg: >-
+      Preflight failed for {{ inventory_hostname }}/{{ project.name }}.
+      The existing directory, Compose file or .env is missing.
+      No deployment should proceed.
+
+- name: Validate current live Compose configuration
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/{{ project.live_file }}"
+      - config
+      - -q
+  changed_when: false
+
+- name: Stage the repository candidate
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../{{ project.repo_file }}"
+    dest: "{{ project.directory }}/.compose-batch-candidate.yaml"
+    mode: "0600"
+
+- name: Validate candidate against the target's existing environment
+  ansible.builtin.command:
+    argv:
+      - docker
+      - compose
+      - --project-directory
+      - "{{ project.directory }}"
+      - -f
+      - "{{ project.directory }}/.compose-batch-candidate.yaml"
+      - config
+      - -q
+  changed_when: false
+
+- name: Hash live and candidate Compose files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+    checksum_algorithm: sha256
+  loop:
+    - "{{ project.directory }}/{{ project.live_file }}"
+    - "{{ project.directory }}/.compose-batch-candidate.yaml"
+  register: project_hashes
+
+- name: Report whether repository configuration differs
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }}/{{ project.name }}:
+      {{ 'MATCH' if project_hashes.results[0].stat.checksum ==
+      project_hashes.results[1].stat.checksum else 'DIFFERENT' }}
+
+- name: Require explicit approval for differing configurations
+  ansible.builtin.assert:
+    that:
+      - >-
+        project_hashes.results[0].stat.checksum ==
+        project_hashes.results[1].stat.checksum
+        or approve_compose_drift | default(false) | bool
+    fail_msg: >-
+      {{ inventory_hostname }}/{{ project.name }} differs from the
+      repository. Batch deployment aborted before the apply phase.
+      Review the live/repository difference, reconcile it, or deliberately
+      approve repository configuration deployment after reviewing the risk.

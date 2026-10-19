@@ -1,0 +1,71 @@
+
+name: Deploy Compose Batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      approve_compose_drift:
+        description: "Allow repository Compose files that differ from live files"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-compose-batch
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Preflight and deploy all Compose projects
+    runs-on: [self-hosted, linux, x64, homelab-smoke]
+    timeout-minutes: 45
+    env:
+      LANG: C.utf8
+      LC_ALL: C.utf8
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Ansible environment
+        run: |
+          python3 --version
+          python3 -m venv .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt
+
+      - name: Validate inventory and playbook syntax
+        run: |
+          .venv/bin/ansible-inventory \
+            -i ansible/inventory/homelab.yml --list >/dev/null
+
+          .venv/bin/ansible-playbook \
+            -i ansible/inventory/homelab.yml \
+            --syntax-check \
+            ansible/playbooks/deploy-compose-batch.yml
+
+      - name: Verify SSH and Docker Compose on every target
+        run: |
+          .venv/bin/ansible compose_deploy_hosts \
+            -i ansible/inventory/homelab.yml \
+            -m ansible.builtin.ping
+
+          .venv/bin/ansible compose_deploy_hosts \
+            -i ansible/inventory/homelab.yml \
+            -m ansible.builtin.command \
+            -a "docker compose version" \
+            -o
+
+      - name: Preflight all targets, then deploy the batch
+        env:
+          APPROVE_COMPOSE_DRIFT: ${{ inputs.approve_compose_drift }}
+        run: |
+          .venv/bin/ansible-playbook \
+            -i ansible/inventory/homelab.yml \
+            ansible/playbooks/deploy-compose-batch.yml \
+            --extra-vars "approve_compose_drift=${APPROVE_COMPOSE_DRIFT}"
+
+      - name: Run LAN smoke tests
+        run: bash scripts/smoke-test-lan.sh
